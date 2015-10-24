@@ -1,0 +1,263 @@
+<?php
+
+/**
+ * ProcessWire 'Wire Mail Templates' module
+ *
+ * @pakage WireMailBranding
+ * @author ©2015 Martijn Geerts (Calago) mgeerts@calago.nl
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2014 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://processwire.com
+ *
+ */
+
+class WireMailBranding extends WireMail implements Module, ConfigurableModule {
+
+    // Return info about this module
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'Mail Branding',
+            'summary' => __('Add templates to WireMail'),
+            'version' => '0.0.1',
+            'author' => 'Martijn Geerts (Calago)',
+            'icon' => 'envelope-o',
+            'autoload' => true,
+        );
+    }
+
+    /**
+     * Attach Hook
+     *
+     * @return void
+     */
+    public function ready() {
+        $this->addHook("WireMail::template", $this, "methodeTemplate");
+        $this->addHookBefore('WireMail::send', $this, 'beforemailSend');
+    }
+
+    public $mail = array();
+
+    /**
+     * Default configuration for this module
+     *
+     * The point of putting this in it's own function is so that you don't have to specify
+     * these defaults more than once.
+     *
+     * @return array
+     */
+    public function getDefaultData() {
+        return array(
+            'template' => wire('config')->urls->get($this->className()) . 'templates/simple.php'
+        );
+    }
+
+    /**
+     * Populate the default config data
+     *
+     * ProcessWire will automatically overwrite it with anything the user has specifically configured.
+     * This is done in construct() rather than init() because ProcessWire populates config data after
+     * construct(), but before init().
+     *
+     */
+    public function __construct() {
+        foreach($this->getDefaultData() as $key => $value) {
+            $this->$key = $value;
+        }
+    }
+
+    /**
+     * Returns valid template path
+     *
+     * @return mixed string / boolean false
+     */
+    private function getTemplatePath($abs_url = '') {
+        if (!$abs_url) return false;
+        $file = rtrim(wire('config')->paths->root, '/') . $abs_url;
+        if (is_file($file)) return $file;
+        wire('log')->save('error', sprintf("Mail template doesn't exist on %s.", $abs_url));
+        return false;
+    }
+
+
+    /**
+     * Include and put contents into a variable
+     *
+     * @return string
+     */
+    private function includeFile($file){
+        ob_start();
+        include($file);
+        return ob_get_clean();
+    }
+
+    /**
+     * Returns a valid template file
+     *
+     * @return mixed string / boolean false
+     */
+    private function getTemplateContent($path = '', $return = true) {
+        if (!$path) return false;
+        $content = $this->includeFile($path);;
+        if (strpos($content, '{bodyHTML}') === false) {
+            wire('log')->save('error', "Mail template doesn't contain the {bodyHTML} tag.");
+            return false;
+        }
+        return $return ? $content : true;
+    }
+
+    /**
+     * Populate $this->mail from parent::$mail and own settings
+     *
+     * @return void
+     */
+    private function addMailSettings(WireMailInterface $instance) {
+        foreach($instance->mail as $key => $value) $this->$key = $value;
+    }
+
+    /**
+     * Hook handling
+     *
+     * @return void
+     */
+    public function beforemailSend(HookEvent $event) {
+        // WireMail instance
+        $instance = $event->object;
+        // Populate settings (shameless data copy from parent to $this->data)
+        $this->addMailSettings($instance);
+        // Get the template
+        $path = $this->getTemplatePath($this->data['template']);
+        if (!$path) return;
+        $wrapper = $this->getTemplateContent($path);
+        if (!$wrapper) return;
+        // Add bodyHTML to $content wrapper and set to bodyHTML
+        $bodyHTML = $this->data['bodyHTML'];
+        // When Hook is set in init the hook is set twice. That one from WireMail and one
+        // from the SMTP class. We leave the return as it does do no harm.
+        if (!$bodyHTML) return;
+        $instance->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
+    }
+
+    /**
+     * Add template metho to WireMail
+     *
+     * @return void
+     */
+    public function methodeTemplate(HookEvent $event) {
+        // WireMail instance
+        $instance = $event->object;
+        $this->set('template', $event->arguments(0));
+    }
+
+    /**
+     * Install defaults
+     *
+     * @return void
+     */
+    public function ___install() {
+        $this->modules->saveModuleConfigData($this, $this->getDefaultData());
+    }
+
+    /**
+     * Module configuration
+     *
+     * @param array $data
+     * @return InputfieldWrapper
+     */
+    public function getModuleConfigInputfields(array $data) {
+
+        if ($data['reset'] === 1) {
+            $defaults = $this->getDefaultData();
+            $data['template'] = $defaults['template'];
+            $this->modules->saveModuleConfigData($this, $data);
+        }
+
+        // merge default config settings
+        $data = array_merge($this->getDefaultData(), $data);
+
+        $error = false;
+        $notes = '';
+        $path = $this->getTemplatePath($data['template']);
+        $content = $this->getTemplateContent($path, false);
+        $stored = $this->modules->getModuleConfigData($this);
+
+        if (!$data['template']) {
+            $icon = 'wrench';
+            $notes = $this->_("Set the absolute URL manually from your Page template.");
+        } else if (!$path && !$content) {
+            $error = $this->_("Absolute url to the template is not correct.");
+            $icon = 'chain-broken';
+        } else if ($path && !$content) {
+            $error = $this->_("Mail template doesn't contain the {bodyHTML} tag.");
+            $icon = 'exclamation-triangle';
+        } else if ($path && $content && $stored['template'] !== $data['template']) {
+            $error = 'error';
+            $icon = 'exclamation-triangle';
+            $notes =
+                $this->_("Template file path is not yet saved.") . ' ' .
+                $this->_("Press submit to save the module configuration.");
+        } else if ($path && $content) {
+            $icon = 'thumbs-up';
+            $notes = $this->_("Lookin' Good!");
+        }
+
+        // this is a container for fields, basically like a fieldset
+        $wrapper = new InputfieldWrapper();
+
+        $field = $this->modules->get('InputfieldMarkup');
+        $field->label = $this->_('Absolute URL to the template');
+        $field->value = "<p>Maecenas faucibus mollis interdum.</p>";
+        $wrapper->append($field);
+
+        $fs = $this->modules->get('InputfieldFieldset');
+        $fs->label = $this->_('The wireMail() call');
+
+
+
+        $field = $this->modules->get('InputfieldMarkup');
+        $field->label = $this->_('How to use?');
+        $field->value =
+            "<code style='font-size: 14px; color: #666; line-height: 135%; font-family: Consolas, 'Lucida Console', 'DejaVu Sans Mono', monospace;'>\n" .
+            "<pre>\n" .
+            "&lt;?php\n\n" .
+            "\$mail = wireMail();\n" .
+            "\$mail->to('user@some-domain.ext')->from('you@own-domain.ext');\n" .
+            "\$mail->subject('Mail Subject');\n" .
+            //"<span style='color: #DB1174;'>// Set template manually, overwriting the Absolute URL here in the settings.</span>\n" .
+            "\$mail->template('/site/templates/template_wrapper.php');\n" .
+            "\$mail->bodyHTML('This will replace the {bodyHTML} tag in the mail template.');\n" .
+            "\$mail->send();\n" .
+            "</pre>\n" .
+            "</code>\n";
+        $field->notes = $this->_('// Use the **template** method to overwrite the default.');
+
+        $fs->append($field);
+
+        $wrapper->append($fs);
+
+
+
+
+        $field = $this->modules->get('InputfieldText');
+        $field->label = $this->_('Absolute URL to the template');
+        $field->icon = $icon;
+        $field->name = 'template';
+        $field->value = $data[$field->name];
+        $field->notes = $notes;
+        $field->columnWidth = 75;
+        if ($error) $field->error($error);
+        $wrapper->append($field);
+
+        $field = $this->modules->get('InputfieldCheckbox');
+        $field->label = $this->_('Reset URL to default');
+        $field->label2 = $this->_('Reset tot default');
+        $field->icon = 'refresh';
+        $field->name = 'reset';
+        $field->columnWidth = 25;
+        $wrapper->append($field);
+
+        return $wrapper;
+    }
+}
