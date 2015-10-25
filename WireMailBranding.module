@@ -1,7 +1,7 @@
 <?php
 
 /**
- * ProcessWire 'Wire Mail Templates' module
+ * ProcessWire 'Wire Mail Branding' module
  *
  * @pakage WireMailBranding
  * @author ©2015 Martijn Geerts (Calago) mgeerts@calago.nl
@@ -30,6 +30,9 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
 
     /**
      * Attach Hook
+     *
+     * When Hooks are set in the init() the hooks are called twice. The one from WireMail 
+     * and the one replacing the wireMail() function call. 
      *
      * @return void
      */
@@ -134,8 +137,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         if (!$wrapper) return;
         // Add bodyHTML to $content wrapper and set to bodyHTML
         $bodyHTML = $this->data['bodyHTML'];
-        // When Hook is set in init the hook is set twice. That one from WireMail and one
-        // from the SMTP class. We leave the return as it does do no harm.
         if (!$bodyHTML) return;
         $instance->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
     }
@@ -146,8 +147,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      * @return void
      */
     public function methodeTemplate(HookEvent $event) {
-        // WireMail instance
-        $instance = $event->object;
         $this->set('template', $event->arguments(0));
     }
 
@@ -211,11 +210,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $field->value = "<p>Maecenas faucibus mollis interdum.</p>";
         $wrapper->append($field);
 
-        $fs = $this->modules->get('InputfieldFieldset');
-        $fs->label = $this->_('The wireMail() call');
-
-
-
         $field = $this->modules->get('InputfieldMarkup');
         $field->label = $this->_('How to use?');
         $field->value =
@@ -233,13 +227,11 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
             "</code>\n";
         $field->notes = $this->_('// Use the **template** method to overwrite the default.');
 
+        $fs = $this->modules->get('InputfieldFieldset');
+        $fs->label = $this->_('The wireMail() call');
         $fs->append($field);
-
         $wrapper->append($fs);
-
-
-
-
+        
         $field = $this->modules->get('InputfieldText');
         $field->label = $this->_('Absolute URL to the template');
         $field->icon = $icon;
