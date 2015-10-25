@@ -20,28 +20,29 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     public static function getModuleInfo() {
         return array(
             'title' => 'Mail Branding',
-            'summary' => __('Add templates to WireMail'),
+            'summary' => __('Add a wrapper around bodyHTML.'),
             'version' => '0.0.1',
             'author' => 'Martijn Geerts (Calago)',
             'icon' => 'envelope-o',
             'autoload' => true,
+            'singular' => true,
         );
     }
 
     /**
      * Attach Hook
      *
-     * When Hooks are set in the init() the hooks are called twice. The one from WireMail 
-     * and the one replacing the wireMail() function call. 
+     * When Hooks are set in the init() the hooks are called twice. The one from WireMail
+     * and the one replacing the wireMail() function call.
      *
      * @return void
      */
-    public function ready() {
+    public function init() {
         $this->addHook("WireMail::template", $this, "methodeTemplate");
         $this->addHookBefore('WireMail::send', $this, 'beforemailSend');
     }
 
-    public $mail = array();
+    //public $mail = array();
 
     /**
      * Default configuration for this module
@@ -53,7 +54,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      */
     public function getDefaultData() {
         return array(
-            'template' => wire('config')->urls->get($this->className()) . 'templates/simple.php'
+            'template' => wire('config')->urls->get($this->className()) . 'example/wrapper.php'
         );
     }
 
@@ -76,7 +77,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      *
      * @return mixed string / boolean false
      */
-    private function getTemplatePath($abs_url = '') {
+    private function getWrapperPath($abs_url = '') {
         if (!$abs_url) return false;
         $file = rtrim(wire('config')->paths->root, '/') . $abs_url;
         if (is_file($file)) return $file;
@@ -90,7 +91,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      *
      * @return string
      */
-    private function includeFile($file){
+    private function getContent($file){
         ob_start();
         include($file);
         return ob_get_clean();
@@ -101,23 +102,14 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      *
      * @return mixed string / boolean false
      */
-    private function getTemplateContent($path = '', $return = true) {
+    private function getWrapperContent($path = '', $return = true) {
         if (!$path) return false;
-        $content = $this->includeFile($path);;
+        $content = $this->getContent($path);
         if (strpos($content, '{bodyHTML}') === false) {
             wire('log')->save('error', "Mail template doesn't contain the {bodyHTML} tag.");
             return false;
         }
         return $return ? $content : true;
-    }
-
-    /**
-     * Populate $this->mail from parent::$mail and own settings
-     *
-     * @return void
-     */
-    private function addMailSettings(WireMailInterface $instance) {
-        foreach($instance->mail as $key => $value) $this->$key = $value;
     }
 
     /**
@@ -127,18 +119,16 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      */
     public function beforemailSend(HookEvent $event) {
         // WireMail instance
-        $instance = $event->object;
-        // Populate settings (shameless data copy from parent to $this->data)
-        $this->addMailSettings($instance);
+        $wireMail = $event->object;
         // Get the template
-        $path = $this->getTemplatePath($this->data['template']);
+        $path = $this->getWrapperPath($this->data['template']);
         if (!$path) return;
-        $wrapper = $this->getTemplateContent($path);
+        $wrapper = $this->getWrapperContent($path);
         if (!$wrapper) return;
         // Add bodyHTML to $content wrapper and set to bodyHTML
-        $bodyHTML = $this->data['bodyHTML'];
+        $bodyHTML = $wireMail->mail['bodyHTML'];
         if (!$bodyHTML) return;
-        $instance->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
+        $wireMail->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
     }
 
     /**
@@ -160,6 +150,14 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
+     * Recommendation from ryan.
+     *
+     */
+    public function ___send() {
+        return parent::___send();
+    }
+
+    /**
      * Module configuration
      *
      * @param array $data
@@ -178,8 +176,8 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
 
         $error = false;
         $notes = '';
-        $path = $this->getTemplatePath($data['template']);
-        $content = $this->getTemplateContent($path, false);
+        $path = $this->getWrapperPath($data['template']);
+        $content = $this->getWrapperContent($path, false);
         $stored = $this->modules->getModuleConfigData($this);
 
         if (!$data['template']) {
@@ -231,7 +229,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $fs->label = $this->_('The wireMail() call');
         $fs->append($field);
         $wrapper->append($fs);
-        
+
         $field = $this->modules->get('InputfieldText');
         $field->label = $this->_('Absolute URL to the template');
         $field->icon = $icon;
