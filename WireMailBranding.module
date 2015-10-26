@@ -6,6 +6,8 @@
  * @pakage WireMailBranding
  * @author ©2015 Martijn Geerts (Calago) mgeerts@calago.nl
  *
+ * Thanks @Ryan for all you've done!
+ *
  * ProcessWire 2.x
  * Copyright (C) 2014 by Ryan Cramer
  * Licensed under GNU/GPL v2, see LICENSE.TXT
@@ -30,10 +32,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
-     * Attach Hook
-     *
-     * When Hooks are set in the init() the hooks are called twice. The one from WireMail
-     * and the one replacing the wireMail() function call.
+     * Hooks
      *
      * @return void
      */
@@ -42,13 +41,8 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $this->addHookBefore('WireMail::send', $this, 'beforemailSend');
     }
 
-    //public $mail = array();
-
     /**
      * Default configuration for this module
-     *
-     * The point of putting this in it's own function is so that you don't have to specify
-     * these defaults more than once.
      *
      * @return array
      */
@@ -73,6 +67,17 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
+     * Capture processed file so it can be assigned to a variable
+     *
+     * @return string
+     */
+    private function getContent($file){
+        ob_start();
+        include($file);
+        return ob_get_clean();
+    }
+
+    /**
      * Returns valid template path
      *
      * @return mixed string / boolean false
@@ -83,18 +88,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         if (is_file($file)) return $file;
         wire('log')->save('error', sprintf("Mail template doesn't exist on %s.", $abs_url));
         return false;
-    }
-
-
-    /**
-     * Include and put contents into a variable
-     *
-     * @return string
-     */
-    private function getContent($file){
-        ob_start();
-        include($file);
-        return ob_get_clean();
     }
 
     /**
@@ -182,7 +175,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
 
         if (!$data['template']) {
             $icon = 'wrench';
-            $notes = $this->_("Set the absolute URL manually from your Page template.");
+            $notes = $this->_("Set the email wrapper template in your wireMail call. (see example)");
         } else if (!$path && !$content) {
             $error = $this->_("Absolute url to the template is not correct.");
             $icon = 'chain-broken';
@@ -203,42 +196,43 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         // this is a container for fields, basically like a fieldset
         $wrapper = new InputfieldWrapper();
 
-        $field = $this->modules->get('InputfieldMarkup');
-        $field->label = $this->_('Absolute URL to the template');
-        $field->value = "<p>Maecenas faucibus mollis interdum.</p>";
-        $wrapper->append($field);
+        $fs = $this->modules->get('InputfieldFieldset');
+        $fs->label = $this->_('Mail Branding');
+        $fs->description =
+            $this->_("Create an email template and place the {bodyHTML} tag in it.") . "\n" .
+            $this->_("The tag will be replaced with the contents of \$mail->bodyHTML. (see example below)") . "\n" .
+            $this->_("WireMailBranding will only work when using bodyHTML method from your wireMail call.");
 
         $field = $this->modules->get('InputfieldMarkup');
-        $field->label = $this->_('How to use?');
+        $field->icon = 'cubes';
+        $field->label = $this->_('Example');
         $field->value =
             "<code style='font-size: 14px; color: #666; line-height: 135%; font-family: Consolas, 'Lucida Console', 'DejaVu Sans Mono', monospace;'>\n" .
             "<pre>\n" .
-            "&lt;?php\n\n" .
+            "&lt;?php\n" .
             "\$mail = wireMail();\n" .
             "\$mail->to('user@some-domain.ext')->from('you@own-domain.ext');\n" .
             "\$mail->subject('Mail Subject');\n" .
-            //"<span style='color: #DB1174;'>// Set template manually, overwriting the Absolute URL here in the settings.</span>\n" .
+            "<span style='color: #DB1174;'>// " .
+                $this->_('Use $mail->template to overwrite the default wrapper.') .
+            "</span>\n" .
             "\$mail->template('/site/templates/template_wrapper.php');\n" .
-            "\$mail->bodyHTML('This will replace the {bodyHTML} tag in the mail template.');\n" .
+            "\$mail->bodyHTML('&lt;p&gt;Markup to replace the tag.&lt;/p&gt;');\n" .
             "\$mail->send();\n" .
             "</pre>\n" .
             "</code>\n";
-        $field->notes = $this->_('// Use the **template** method to overwrite the default.');
-
-        $fs = $this->modules->get('InputfieldFieldset');
-        $fs->label = $this->_('The wireMail() call');
         $fs->append($field);
-        $wrapper->append($fs);
 
         $field = $this->modules->get('InputfieldText');
-        $field->label = $this->_('Absolute URL to the template');
+        $field->label = $this->_('Default Wrapper');
+        $field->description = $this->_('Absolute URL to the email wrapper template.');
         $field->icon = $icon;
         $field->name = 'template';
         $field->value = $data[$field->name];
         $field->notes = $notes;
         $field->columnWidth = 75;
         if ($error) $field->error($error);
-        $wrapper->append($field);
+        $fs->append($field);
 
         $field = $this->modules->get('InputfieldCheckbox');
         $field->label = $this->_('Reset URL to default');
@@ -246,7 +240,9 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $field->icon = 'refresh';
         $field->name = 'reset';
         $field->columnWidth = 25;
-        $wrapper->append($field);
+        $fs->append($field);
+
+        $wrapper->append($fs);
 
         return $wrapper;
     }
