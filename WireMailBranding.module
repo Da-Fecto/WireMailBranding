@@ -53,12 +53,9 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
-     * Populate the default config data
+     * Populate the default data
      *
-     * ProcessWire will automatically overwrite it with anything the user has specifically configured.
-     * This is done in construct() rather than init() because ProcessWire populates config data after
-     * construct(), but before init().
-     *
+     * @return void
      */
     public function __construct() {
         foreach($this->getDefaultData() as $key => $value) {
@@ -93,7 +90,9 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     /**
      * Returns a valid template file
      *
-     * @return mixed string / boolean false
+     * @var string $path Path to template
+     * @var bool $return When set to false doesn't return the markup.
+     * @return mixed string / boolean
      */
     private function getWrapperContent($path = '', $return = true) {
         if (!$path) return false;
@@ -125,7 +124,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
-     * Add template metho to WireMail
+     * Path given with the WireMail call set to $this->data['template']. (Hooked)
      *
      * @return void
      */
@@ -202,7 +201,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
             $this->_("Create an email template and place the {bodyHTML} tag in it.") . "\n" .
             $this->_("The tag will be replaced with the contents of \$mail->bodyHTML. (see example below)") . "\n" .
             $this->_("WireMailBranding will only work when using bodyHTML method from your wireMail call.");
-
         $field = $this->modules->get('InputfieldMarkup');
         $field->icon = 'cubes';
         $field->label = $this->_('Example');
