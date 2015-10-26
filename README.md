@@ -1,6 +1,6 @@
 # WireMailBranding
 
-Branding for wireMail. 
+__Branding for wireMail.__ 
 
 Create an email template without content. On the spot where you wish to have your content place the tag {bodyHTML}. Go the module settings and set the path to your template. Make sure the path is absolute from your domain name. Setting the absolute url to the template wrapper in your wireMail call is also an option. (see code below).
 
