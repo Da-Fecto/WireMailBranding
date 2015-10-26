@@ -6,7 +6,7 @@ Create an email template without content. On the spot where you wish to have you
 
 All markup you've set with ```$mail->bodyHTML('<p>Markup</p>');``` will replace the {bodyHTML} tag.
 
-```
+```php
 $mail = wireMail();
 $mail->to('user@some-domain.ext')->from('you@own-domain.ext');
 $mail->subject('Mail Subject');
