@@ -16,7 +16,7 @@ Using the inliner only on the bodyHTML is way more efficient then applying it to
 
 The API overwrites the settings set in the module configuration. 
 
-```php
+````php
 $mail = wireMail();
 $mail->to('user@some-domain.ext')->from('you@own-domain.ext');
 $mail->subject('Mail Subject');
@@ -29,9 +29,11 @@ $mail->inlineCSS('bodyHTML');
 
 $mail->bodyHTML('<p>This paragraph will replace the {bodyHTML} tag in the mail template.</p>');
 $mail->send();
-```
+````
 
-```php
+### the added methods
+
+````php
 // Disable the wrapper template* (Just send the bodyHTML)
 $mail->template('');
 
@@ -43,7 +45,8 @@ $mail->inlineCSS('bodyHTML');
 
 // Apply over the complete HTML.
 $mail->inlineCSS('wrapper');
-```
+````
+
 
 ### Thanks!
 
