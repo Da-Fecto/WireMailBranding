@@ -31,18 +31,19 @@ $mail->bodyHTML('<p>This paragraph will replace the {bodyHTML} tag in the mail t
 $mail->send();
 ```
 
+```php
+// Disable the wrapper template* (Just send the bodyHTML)
+$mail->template('');
 
-*Disable the wrapper template* (Just send the bodyHTML)<br> 
-```$mail->template('');```
+// Disable the Emogrifier inliner
+$mail->inlineCSS(0);
 
-*Disable the Emogrifier inliner*<br>
-```$mail->inlineCSS(0);```
+// Apply only on bodyHTML. (optimal when using Emogrifier inliner)
+$mail->inlineCSS('bodyHTML');
 
-*Apply only on bodyHTML.* (optimal when using Emogrifier inliner)<br> 
-```$mail->inlineCSS('bodyHTML');```
-
-*Apply over the complete HTML.*<br> 
-```$mail->inlineCSS('wrapper');```
+// Apply over the complete HTML.
+$mail->inlineCSS('wrapper');
+```
 
 ### Thanks!
 
