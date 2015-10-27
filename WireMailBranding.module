@@ -7,7 +7,7 @@
  * @author ©2015 Martijn Geerts (Calago) mgeerts@calago.nl
  *
  * Thanks @John Reeve & the people at Pelago for ceating & maintaining Emogrifier
- * Thanks @Ryan for all you've done and of cause for your recommendations!
+ * Thanks @Ryan for your recommendations!
  *
  * ProcessWire 2.x
  * Copyright (C) 2014 by Ryan Cramer
@@ -277,23 +277,21 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $field->icon = 'cubes';
         $field->label = $this->_("Example");
         $field->value =
-            "<code style='font-size: 14px; color: #666; line-height: 135%; font-family: Consolas, 'Lucida Console', 'DejaVu Sans Mono', monospace;'>\n" .
-            "&lt;?php<br>" .
-            "\$mail = wireMail();<br>" .
-            "\$mail->to('some.user@some-domain.ext')->from('you@your-domain.ext');<br>" .
-            "\$mail->subject('Mail Subject');<br>" .
-            "<span style='color: #DB1174;'>// " .
-                $this->_("Path to wrapper") .
-            "</span><br>" .
-            "\$mail->template('/site/templates/template_wrapper.php');<br>" .
-            "<span style='color: #DB1174;'>// " .
-                $this->_("Posible values for the CSS inliner") . " " .
+            '<code style="font-size: 14px; color: #666; line-height: 135%; font-family: Consolas, \'Lucida Console\', \'DejaVu Sans Mono\', monospace;"><br>' .
+            '&lt;?php<br>' .
+            '$mail = wireMail();<br>' .
+            '$mail->to("some.user@some-domain.ext")->from("you@your-domain.ext");<br>' .
+            '$mail->subject("Mail Subject");<br>' .
+            '<span style="color: #DB1174;">// ' . $this->_("Path to wrapper") . '</span><br>' .
+            '$mail->template("/site/templates/template_wrapper.php");<br>' .
+            '<span style="color: #DB1174;">// ' .
+                $this->_("Posible values for the CSS inliner") . ' ' .
                 $this->_("( 0 / bodyHTML / wrapper )") .
-            "</span><br>" .
-            "\$mail->inlineCSS('bodyHTML');<br>" .
-            "\$mail->bodyHTML('&lt;p&gt;Markup to replace the tag.&lt;/p&gt;');<br>" .
-            "\$mail->send();<br>" .
-            "</code>\n";
+            '</span><br>' .
+            '$mail->inlineCSS("bodyHTML");<br>' .
+            '$mail->bodyHTML("&lt;p&gt;Markup to replace the tag.&lt;/p&gt;");<br>' .
+            '$mail->send();<br>' .
+            '</code>';
         $fs->append($field);
         $wrapper->append($fs);
 
