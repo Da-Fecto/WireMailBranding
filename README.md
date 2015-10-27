@@ -1,6 +1,6 @@
 # WireMailBranding
 
-## Add email templates to wireMail
+**Add email templates to wireMail**
 
 ### How it works?
 
