@@ -31,7 +31,7 @@ $mail->bodyHTML('<p>This paragraph will replace the {bodyHTML} tag in the mail t
 $mail->send();
 ````
 
-### the added methods
+### The added methods
 
 ````php
 // Disable the wrapper template* (Just send the bodyHTML)
