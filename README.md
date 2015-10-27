@@ -30,7 +30,8 @@ $mail->inlineCSS('bodyHTML');
 $mail->bodyHTML('<p>This paragraph will replace the {bodyHTML} tag in the mail template.</p>');
 $mail->send();
 ```
-<br>
+
+
 *Disable the wrapper template* (Just send the bodyHTML)<br> 
 ```$mail->template('');```
 
