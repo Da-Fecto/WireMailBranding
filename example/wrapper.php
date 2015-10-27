@@ -5,6 +5,7 @@
  *
  */
 
+
 // ProcessWire variables available via the wire function.
 $page = wire('page');
 
