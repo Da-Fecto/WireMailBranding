@@ -8,9 +8,9 @@ Create an email template without content. On the spot where you wish to have you
 
 ### Setting the defaults
 
-Go to the module settings and set the path to your email template. Make sure it is an absolute URL. Optionally you could inline all CSS with [Emogrifier](https://github.com/jjriv/emogrifier) when you add a CSS file. This file needs to have the same name as your wrapper template and it must end with the extension .css.
+Go to the module settings and set the path to your email template. Make sure it is an absolute URL. Optionally you could inline all CSS with [Emogrifier](https://github.com/jjriv/emogrifier) when you add a CSS file. The CSS file needs to be placed in the same folder, have the same basename as the wrapper and should end with the .css extension.
 
-Using the inliner only on the bodyHTML is way more efficient then applying it to the complete HTML. So we recommend to inline all styles in the wrapper manually and only apply the inliner on the bodyHTML.
+When using the [Emogrifier](https://github.com/jjriv/emogrifier) CSS inliner applying it on the bodyHTML only is the most efficient way. We recommend you to write the inline styles for the wrapper manually.
 
 ### Overwriting the defaults
 
@@ -53,7 +53,6 @@ $mail->inlineCSS('wrapper');
 * John Reeve, creator of [Emogrifier](https://github.com/jjriv/emogrifier)
 * The maintainers of Emogrifier, [Pelago](http://www.pelagodesign.com/)
 * Ryan Cramer, founder and lead programmer [ProcessWire](http://processwire.com)
-* The whole [Calago](http://www.calago.nl/) team. (Happy to work here)
+* The whole [Calago](http://www.calago.nl/) team.
 
-This module is sponsored by [Calago.nl](http://www.calago.nl/) and written by Martijn Geerts. 
-
+This module is written by Martijn Geerts and sponsored by [Calago.nl](http://www.calago.nl/).
