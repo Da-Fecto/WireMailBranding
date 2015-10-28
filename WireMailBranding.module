@@ -24,7 +24,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         return array(
             'title' => 'Mail Branding',
             'summary' => __('Add a wrapper around bodyHTML.'),
-            'version' => '0.0.1',
+            'version' => '0.1.0',
             'author' => 'Martijn Geerts (Calago)',
             'icon' => 'envelope-o',
             'autoload' => true,
@@ -131,11 +131,19 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $inlineCSS = $this->inlineCSS;
         $wrapped = null;
 
-        if (extension_loaded('mbstring')) {
-            if ($inlineCSS === 'bodyHTML' && $css = $this->getCSSContent($path)) {
+        if (extension_loaded('mbstring') && ($inlineCSS === 'bodyHTML' || $inlineCSS === 'wrapper')) {
+
+            $css = $this->getCSSContent($path);
+
+            // be nice for PW wireMail calls like in CommentNotifications.php
+            if (preg_match('/<body[^>]*>/i', $bodyHTML)) {
+                $bodyHTML = $this->getInnerContent($bodyHTML, $element = 'body');
+            }
+
+            if ($inlineCSS === 'bodyHTML' && $css) {
                 $bodyHTML = $this->emogrifier($bodyHTML, $css, $inlineCSS);
                 $wrapped = str_replace('{bodyHTML}', $bodyHTML, $wrapper);
-            } else if ($inlineCSS === 'wrapper' && $css = $this->getCSSContent($path)) {
+            } else if ($inlineCSS === 'wrapper' && $css) {
                 $wrapped = str_replace('{bodyHTML}', $bodyHTML, $wrapper);
                 $wrapped = $this->emogrifier($wrapped, $css, $inlineCSS);
             }
@@ -143,6 +151,24 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
 
         $wrapped = $wrapped ? $wrapped : str_replace('{bodyHTML}', $bodyHTML, $wrapper);
         $wireMail->bodyHTML($wrapped);
+    }
+
+    /**
+     * Get inner contents of html element
+     *
+     * @property string $markup Markup
+     * @property string $element Element to get inner content from.
+     * @return string Inner content.
+     */
+    public function getInnerContent($markup, $element = 'body') {
+        $html = new DOMDocument;
+        $html->loadHTML($markup);
+        $body = $html->getElementsByTagName($element)->item(0);
+        $result = new DOMDocument;
+        foreach ($body->childNodes as $child) {
+            $result->appendChild($result->importNode($child, true));
+        }
+        return $result->saveHTML();
     }
 
     /**
@@ -231,7 +257,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      */
     public function getModuleConfigInputfields(array $data) {
 
-        if ($data['reset'] === 1) {
+        if (isset($data['reset']) && $data['reset'] === 1) {
             $defaults = $this->getDefaultData();
             $data['template'] = $defaults['template'];
             $this->wire('modules')->saveModuleConfigData($this, $data);
