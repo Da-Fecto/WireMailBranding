@@ -24,7 +24,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         return array(
             'title' => 'Mail Branding',
             'summary' => __('Add a wrapper around bodyHTML.'),
-            'version' => '0.1.0',
+            'version' => '0.1.1',
             'author' => 'Martijn Geerts (Calago)',
             'icon' => 'envelope-o',
             'autoload' => true,
@@ -171,6 +171,8 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         return $result->saveHTML();
     }
 
+    protected $inlinerObject = null;
+
     /**
      * Emogrifier
      *
@@ -189,7 +191,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     public function emogrifier($html = '', $css = '', $inlineCSS) {
         if (!$html) return false;
         if (!$css) return $html;
-        require(__dir__ . '/emogrifier/Classes/Emogrifier.php');
+        require_once(__dir__ . '/emogrifier/Classes/Emogrifier.php');
         $emogrifier =  new \Pelago\Emogrifier();
         $emogrifier->setHtml($html);
         $emogrifier->setCss($css);
