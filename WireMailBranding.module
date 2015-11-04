@@ -24,7 +24,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         return array(
             'title' => 'Mail Branding',
             'summary' => __('Add a wrapper around bodyHTML.'),
-            'version' => '0.1.1',
+            'version' => '0.1.2',
             'author' => 'Martijn Geerts (Calago)',
             'icon' => 'envelope-o',
             'autoload' => true,
@@ -68,15 +68,21 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
-     * Capture processed file so it can be assigned to a variable
+     * Path given with the WireMail call set to $this->data['template']. (Hooked)
      *
-     * @return string
+     * @return void
      */
-    private function getContent($file) {
-        if (!is_file($file)) return '';
-        ob_start();
-        include($file);
-        return ob_get_clean();
+    private function hookMethodTemplate(HookEvent $event) {
+        $this->set('template', $event->arguments(0));
+    }
+
+    /**
+     * Set Emogrifier CSS inliner from WireMail. (0, bodyHTML, wrapper) (Hooked)
+     *
+     * @return void
+     */
+    private function hookMethodInlineCSS(HookEvent $event) {
+        $this->set('inlineCSS', $event->arguments(0));
     }
 
     /**
@@ -90,6 +96,18 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         if (is_file($file)) return $file;
         wire('log')->save('errors', sprintf("Mail template doesn't exist on %s.", $abs_url));
         return false;
+    }
+
+    /**
+     * Capture processed file so it can be assigned to a variable
+     *
+     * @return string
+     */
+    private function getContent($file) {
+        if (!is_file($file)) return '';
+        ob_start();
+        include($file);
+        return ob_get_clean();
     }
 
     /**
@@ -111,6 +129,19 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
     }
 
     /**
+     * Return CSS when given the path to the wrapper.
+     *
+     * @property string $path Path to wrapper
+     * @return string CSS content
+     */
+    protected function getCSSContent($path = '') {
+        if (!$path) return false;
+        $info = pathinfo($path);
+        $file = $info['dirname'] . '/' . $info['filename'] . '.css';
+        return $this->getContent($file);
+    }
+
+    /**
      * Hook handling
      *
      * @property HookEvent $event
@@ -127,30 +158,40 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         // Add bodyHTML to $content wrapper and set to bodyHTML
         $bodyHTML = $wireMail->mail['bodyHTML'];
         if (!$bodyHTML) return;
-
+        // bodyHTML/wrapper/0
         $inlineCSS = $this->inlineCSS;
-        $wrapped = null;
 
-        if (extension_loaded('mbstring') && ($inlineCSS === 'bodyHTML' || $inlineCSS === 'wrapper')) {
-
-            $css = $this->getCSSContent($path);
-
-            // be nice for PW wireMail calls like in CommentNotifications.php
-            if (preg_match('/<body[^>]*>/i', $bodyHTML)) {
-                $bodyHTML = $this->getInnerContent($bodyHTML, $element = 'body');
-            }
-
-            if ($inlineCSS === 'bodyHTML' && $css) {
-                $bodyHTML = $this->emogrifier($bodyHTML, $css, $inlineCSS);
-                $wrapped = str_replace('{bodyHTML}', $bodyHTML, $wrapper);
-            } else if ($inlineCSS === 'wrapper' && $css) {
-                $wrapped = str_replace('{bodyHTML}', $bodyHTML, $wrapper);
-                $wrapped = $this->emogrifier($wrapped, $css, $inlineCSS);
-            }
+        // Inliner disabled
+        if ($inlineCSS !== 'bodyHTML' && $inlineCSS !== 'wrapper') {
+            $wireMail->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
+            return;
         }
 
-        $wrapped = $wrapped ? $wrapped : str_replace('{bodyHTML}', $bodyHTML, $wrapper);
-        $wireMail->bodyHTML($wrapped);
+        // Don't use Emogrifier (Emogrifier needs mbstring)
+        if (!extension_loaded('mbstring')) {
+            $wireMail->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
+            wire('log')->save('errors', "WireMailBranding needs the PHP mbstring extension.");
+            return;
+        }
+
+        $cssContent = $this->getCSSContent($path);
+
+        // We have no CSS, nothing to inline
+        if (!strlen($cssContent)) {
+            $wireMail->bodyHTML(str_replace('{bodyHTML}', $bodyHTML, $wrapper));
+            return;
+        }
+
+        if ($inlineCSS === 'bodyHTML') {
+            $bodyHTML = $this->emogrifier($bodyHTML, $cssContent, $inlineCSS);
+            $bodyHTML = str_replace('{bodyHTML}', $bodyHTML, $wrapper);
+        } else if ($inlineCSS === 'wrapper') {
+            $wrapped = str_replace('{bodyHTML}', $bodyHTML, $wrapper);
+            $bodyHTML = $this->emogrifier($wrapped, $cssContent, $inlineCSS);
+        }
+
+        $wireMail->bodyHTML($bodyHTML);
+
     }
 
     /**
@@ -162,8 +203,13 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
      */
     public function getInnerContent($markup, $element = 'body') {
         $html = new DOMDocument;
+        // Prevent errors
+        libxml_use_internal_errors(true);
         $html->loadHTML($markup);
+        libxml_use_internal_errors(false);
         $body = $html->getElementsByTagName($element)->item(0);
+        // return empty string when not found
+        if (!$body->length) return '';
         $result = new DOMDocument;
         foreach ($body->childNodes as $child) {
             $result->appendChild($result->importNode($child, true));
@@ -199,37 +245,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         } else if ($inlineCSS === 'wrapper') {
             return $emogrifier->emogrify();
         }
-    }
-
-    /**
-     * Return CSS when given the path to the wrapper.
-     *
-     * @property string $path Path to wrapper
-     * @return string CSS content
-     */
-    protected function getCSSContent($path = '') {
-        if (!$path) return false;
-        $info = pathinfo($path);
-        $file = $info['dirname'] . '/' . $info['filename'] . '.css';
-        return $this->getContent($file);
-    }
-
-    /**
-     * Path given with the WireMail call set to $this->data['template']. (Hooked)
-     *
-     * @return void
-     */
-    private function hookMethodTemplate(HookEvent $event) {
-        $this->set('template', $event->arguments(0));
-    }
-
-    /**
-     * Path given with the WireMail call set to $this->data['template']. (Hooked)
-     *
-     * @return void
-     */
-    private function hookMethodInlineCSS(HookEvent $event) {
-        $this->set('inlineCSS', $event->arguments(0));
     }
 
     /**
@@ -280,6 +295,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
             $error = $this->_("Mail template doesn't contain the {bodyHTML} tag.");
             $icon = 'exclamation-triangle';
         } else if ($path && $content && $stored['template'] !== $data['template']) {
+            // This should not be triggered... (Deprecated)
             $error = 'error';
             $icon = 'exclamation-triangle';
             $notes =
@@ -340,6 +356,11 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $field->columnWidth = 25;
         $wrapper->append($field);
 
+        $error = null;
+        if (!extension_loaded('mbstring')) {
+            $error = $this->_("Emogrifier needs the PHP mbstring extension. CSS inline support is disabled.");
+        }
+
         $fs = $this->wire('modules')->get('InputfieldFieldset');
         $fs->label = $this->_("Emogrifier (CSS inliner)");
         $fs->description =
@@ -356,9 +377,13 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $field->name = 'inlineCSS';
         $field->value = $data[$field->name];
         $field->addOption('0', $this->_("Disabled"));
-        $field->addOption('bodyHTML', $this->_("Apply only on bodyHTML."));
-        $field->addOption('wrapper', $this->_("Run over the complete HTML."));
-        $field->notes = $this->_("To overwrite this setting with the API, see example.");
+        if (!$error) {
+            $field->addOption('bodyHTML', $this->_("Apply only on bodyHTML."));
+            $field->addOption('wrapper', $this->_("Run over the complete HTML."));
+            $field->notes = $this->_("To overwrite this setting with the API, see example.");
+        } else {
+            $field->error($error);
+        }
         extension_loaded('mbstring') ? '' : $field->error($this->_("Emogrifier needs the mbstring PHP extension."));
         $fs->append($field);
         $wrapper->append($fs);
