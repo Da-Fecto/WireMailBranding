@@ -12,6 +12,8 @@ sess_*
 *.cache
 *.swp
 *.swo
+# .smbdelete files from Mac OS X
+.smbdelete*
 site-default/config-dev.php
 site-default/assets/logs
 site-default/assets/files

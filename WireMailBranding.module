@@ -24,7 +24,7 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         return array(
             'title' => 'Mail Branding',
             'summary' => __('Add a wrapper around bodyHTML.'),
-            'version' => '0.1.2',
+            'version' => '0.1.3',
             'author' => 'Martijn Geerts (Calago)',
             'icon' => 'envelope-o',
             'autoload' => true,
@@ -156,7 +156,8 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         $wrapper = $this->getWrapperContent($path);
         if (!$wrapper) return;
         // Add bodyHTML to $content wrapper and set to bodyHTML
-        $bodyHTML = $wireMail->mail['bodyHTML'];
+        $bodyHTML = $wireMail->bodyHTML;
+        $bodyHTML = $bodyHTML ? $bodyHTML : $wireMail->mail['bodyHTML'];
         if (!$bodyHTML) return;
         // bodyHTML/wrapper/0
         $inlineCSS = $this->inlineCSS;
