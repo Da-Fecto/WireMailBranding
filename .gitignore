@@ -30,3 +30,5 @@ upgrade.php
 *.css.map
 wire/modules/AdminTheme/AdminThemeDefault/styles/sass/*.css
 composer.lock
+
+example/.smbdeleteAAA58fe9c

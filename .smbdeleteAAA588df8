@@ -191,7 +191,6 @@ class WireMailBranding extends WireMail implements Module, ConfigurableModule {
         }
 
         $wireMail->bodyHTML($bodyHTML);
-
     }
 
     /**
